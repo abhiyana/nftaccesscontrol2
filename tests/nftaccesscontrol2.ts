@@ -16,18 +16,15 @@ describe("nftaccesscontrol2", () => {
 
   const program = anchor.workspace.Nftaccesscontrol2 as Program<Nftaccesscontrol2>;
   
-  // Test accounts
   const authority = anchor.web3.Keypair.generate();
   const subscriber = anchor.web3.Keypair.generate();
   let licenseMint: anchor.web3.PublicKey;
   let subscriberTokenAccount: anchor.web3.PublicKey;
   let publisherPDA: anchor.web3.PublicKey;
   
-  // Test parameters
-  const licensePrice = new anchor.BN(1_000_000_000); // 1 SOL
+  const licensePrice = new anchor.BN(1_000_000_000); 
 
   before(async () => {
-    // Airdrop SOL to authority and subscriber
     const connection = anchor.getProvider().connection;
     
     const authorityAirdrop = await connection.requestAirdrop(
@@ -42,7 +39,6 @@ describe("nftaccesscontrol2", () => {
     );
     await connection.confirmTransaction(subscriberAirdrop);
 
-    // Create license mint
     licenseMint = await createMint(
       connection,
       authority,
@@ -51,13 +47,11 @@ describe("nftaccesscontrol2", () => {
       0
     );
 
-    // Find PDA for publisher
     [publisherPDA] = await anchor.web3.PublicKey.findProgramAddress(
       [Buffer.from("publisher"), authority.publicKey.toBuffer()],
       program.programId
     );
 
-    // Get subscriber's associated token account
     subscriberTokenAccount = await getAssociatedTokenAddress(
       licenseMint,
       subscriber.publicKey
@@ -76,7 +70,6 @@ describe("nftaccesscontrol2", () => {
       .signers([authority])
       .rpc();
 
-    // Fetch and verify publisher account data
     const publisherAccount = await program.account.publisher.fetch(publisherPDA);
     assert.equal(publisherAccount.authority.toString(), authority.publicKey.toString());
     assert.equal(publisherAccount.licenseMint.toString(), licenseMint.toString());
@@ -103,11 +96,9 @@ describe("nftaccesscontrol2", () => {
       .signers([subscriber])
       .rpc();
 
-    // Verify payment was made
     const postBalance = await anchor.getProvider().connection.getBalance(subscriber.publicKey);
     assert(preBalance - postBalance >= licensePrice.toNumber());
 
-    // Verify NFT was received
     const tokenAccount = await getAccount(
       anchor.getProvider().connection,
       subscriberTokenAccount
@@ -148,14 +139,12 @@ describe("nftaccesscontrol2", () => {
       .signers([authority])
       .rpc();
 
-    // Verify NFT was burned
     const tokenAccount = await getAccount(
       anchor.getProvider().connection,
       subscriberTokenAccount
     );
     assert.equal(tokenAccount.amount.toString(), "0");
 
-    // Verify subscriber count decreased
     const publisherAccount = await program.account.publisher.fetch(publisherPDA);
     assert.equal(publisherAccount.totalSubscribers.toString(), "0");
   });
@@ -182,7 +171,7 @@ describe("nftaccesscontrol2", () => {
         .accounts({
           publisher: publisherPDA,
           licenseMint: licenseMint,
-          authority: subscriber.publicKey, // Using subscriber as non-authority
+          authority: subscriber.publicKey,
           subscriber: subscriber.publicKey,
           subscriberTokenAccount: subscriberTokenAccount,
           tokenProgram: TOKEN_PROGRAM_ID,
